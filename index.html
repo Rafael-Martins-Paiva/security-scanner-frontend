@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scanner SaaS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">Security<span>Scanner</span></div>
+            <nav id="auth-nav">
+                <div id="logged-out-nav">
+                    <button id="login-btn" class="btn btn-outline">Login</button>
+                    <button id="register-btn" class="btn btn-primary">Sign Up</button>
+                </div>
+                <div id="logged-in-nav" style="display: none;">
+                    <span id="user-info"></span>
+                    <button id="logout-btn" class="btn btn-outline">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Landing Hero -->
+        <section id="hero-section" class="hero">
+            <h1>Protect Your Applications from Vulnerabilities</h1>
+            <p>Scan your package.json or requirements.txt files to identify security risks and malware in your dependencies.</p>
+            <button id="hero-cta" class="btn btn-primary btn-lg">Start Scanning Now</button>
+        </section>
+
+        <!-- Dashboard (Protected) -->
+        <section id="dashboard-section" style="display: none;">
+            <div class="dashboard-grid">
+                <!-- New Scan Form -->
+                <div class="card scan-form">
+                    <h2>New Security Scan</h2>
+                    <p>Paste the content of your manifest file below.</p>
+                    <div class="form-group">
+                        <label for="manifest-type">Manifest Type</label>
+                        <select id="manifest-type">
+                            <option value="PACKAGE_JSON">package.json (NPM/JS)</option>
+                            <option value="REQUIREMENTS_TXT">requirements.txt (PIP/Python)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="manifest-content">File Content</label>
+                        <textarea id="manifest-content" placeholder='{"dependencies": {"lodash": "4.17.20"}}'></textarea>
+                    </div>
+                    <button id="run-scan-btn" class="btn btn-primary btn-block">Run Analysis</button>
+                </div>
+
+                <!-- History List -->
+                <div class="card history-list">
+                    <h2>Recent Scans</h2>
+                    <div id="scans-history" class="scans-container">
+                        <p class="empty-state">Loading your history...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Results (Modal/Hidden View) -->
+            <div id="results-view" class="card results-card" style="display: none;">
+                <div class="results-header">
+                    <h2>Scan Results</h2>
+                    <button id="close-results" class="close-btn">&times;</button>
+                </div>
+                <div id="results-content"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Auth Modal (Clerk handles UI, but we provide the container) -->
+    <div id="clerk-auth-container"></div>
+
+    <!-- Clerk SDK -->
+    <script 
+        async 
+        crossorigin="anonymous" 
+        data-clerk-publishable-key="REPLACE_WITH_YOUR_CLERK_PUBLISHABLE_KEY"
+        src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+        type="text/javascript">
+    </script>
+    <script src="js/app.js"></script>
+</body>
+</html>
