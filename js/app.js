@@ -1,43 +1,61 @@
 const API_URL = 'https://security-scanner-backend.vercel.app';
+let clerk;
 
-// Initialize Clerk
-window.addEventListener('load', async function () {
-    const clerk = window.Clerk;
-    await clerk.load();
+// Essa função será chamada pelo onload no index.html
+async function initClerk() {
+    console.log("Clerk script loaded. Initializing...");
+    clerk = window.Clerk;
+    
+    try {
+        await clerk.load();
+        console.log("Clerk initialized successfully.");
 
-    if (clerk.user) {
-        updateUIForLoggedInUser(clerk.user);
-        fetchScansHistory();
-    } else {
-        updateUIForLoggedOutUser();
+        if (clerk.user) {
+            updateUIForLoggedInUser(clerk.user);
+            fetchScansHistory();
+        } else {
+            updateUIForLoggedOutUser();
+        }
+
+        setupAuthHandlers();
+    } catch (err) {
+        console.error("Clerk could not load:", err);
     }
+}
 
-    // Auth Form Logic (Embedded)
+function setupAuthHandlers() {
     const mountPoint = document.getElementById('clerk-mount-point');
     const authView = document.getElementById('auth-view');
     const heroSection = document.getElementById('hero-section');
 
     document.getElementById('login-btn')?.addEventListener('click', () => {
+        console.log("Mounting SignIn...");
         heroSection.style.display = 'none';
         authView.style.display = 'block';
-        clerk.mountSignIn(mountPoint, {
+        clerk.openSignIn({
             afterSignInUrl: window.location.origin
         });
     });
 
     document.getElementById('register-btn')?.addEventListener('click', () => {
+        console.log("Mounting SignUp...");
         heroSection.style.display = 'none';
         authView.style.display = 'block';
-        clerk.mountSignUp(mountPoint, {
+        clerk.openSignUp({
             afterSignUpUrl: window.location.origin
         });
+    });
+
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await clerk.signOut();
+        window.location.reload();
     });
 
     document.getElementById('hero-cta')?.addEventListener('click', () => {
         if (clerk.user) {
             scrollToDashboard();
         } else {
-            document.getElementById('register-btn').click();
+            clerk.openSignUp();
         }
     });
 
@@ -46,17 +64,12 @@ window.addEventListener('load', async function () {
         heroSection.style.display = 'block';
     });
 
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        await clerk.signOut();
-        window.location.reload();
-    });
-
     // Scan Actions
     document.getElementById('run-scan-btn')?.addEventListener('click', runNewScan);
     document.getElementById('close-results')?.addEventListener('click', () => {
         document.getElementById('results-view').style.display = 'none';
     });
-});
+}
 
 function updateUIForLoggedInUser(user) {
     document.getElementById('hero-section').style.display = 'none';
@@ -77,7 +90,7 @@ function updateUIForLoggedOutUser() {
 
 async function fetchScansHistory() {
     try {
-        const token = await window.Clerk.session.getToken();
+        const token = await clerk.session.getToken();
         const response = await fetch(`${API_URL}/api/v1/scans/history`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -133,7 +146,7 @@ async function runNewScan() {
     btn.textContent = 'Scanning...';
 
     try {
-        const token = await window.Clerk.session.getToken();
+        const token = await clerk.session.getToken();
         const response = await fetch(`${API_URL}/api/v1/scans/manifest`, {
             method: 'POST',
             headers: {
@@ -167,7 +180,7 @@ async function viewDetails(id) {
     content.innerHTML = '<p>Loading details...</p>';
 
     try {
-        const token = await window.Clerk.session.getToken();
+        const token = await clerk.session.getToken();
         const response = await fetch(`${API_URL}/api/v1/scans/${id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
