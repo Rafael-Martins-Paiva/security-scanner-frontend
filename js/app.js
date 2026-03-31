@@ -1,14 +1,20 @@
 const API_URL = 'https://security-scanner-backend.vercel.app';
-let clerk;
+const CLERK_PUBLISHABLE_KEY = 'pk_test_ZGVmaW5pdGUtbW91c2UtNzQuY2xlcmsuYWNjb3VudHMuZGV2JA';
 
-// Essa função será chamada pelo onload no index.html
 async function initClerk() {
-    console.log("Clerk script loaded. Initializing...");
-    clerk = window.Clerk;
+    console.log("Checking for Clerk SDK...");
+    const clerk = window.Clerk;
     
+    if (!clerk) {
+        console.error("Clerk SDK not found on window object.");
+        return;
+    }
+
     try {
-        await clerk.load();
-        console.log("Clerk initialized successfully.");
+        await clerk.load({
+            publishableKey: CLERK_PUBLISHABLE_KEY
+        });
+        console.log("Clerk Loaded!");
 
         if (clerk.user) {
             updateUIForLoggedInUser(clerk.user);
@@ -17,38 +23,26 @@ async function initClerk() {
             updateUIForLoggedOutUser();
         }
 
-        setupAuthHandlers();
+        setupAuthHandlers(clerk);
     } catch (err) {
-        console.error("Clerk could not load:", err);
+        console.error("Error during Clerk init:", err);
     }
 }
 
-function setupAuthHandlers() {
-    const mountPoint = document.getElementById('clerk-mount-point');
+function setupAuthHandlers(clerk) {
     const authView = document.getElementById('auth-view');
     const heroSection = document.getElementById('hero-section');
 
     document.getElementById('login-btn')?.addEventListener('click', () => {
-        console.log("Mounting SignIn...");
-        heroSection.style.display = 'none';
-        authView.style.display = 'block';
-        clerk.openSignIn({
-            afterSignInUrl: window.location.origin
-        });
+        clerk.openSignIn();
     });
 
     document.getElementById('register-btn')?.addEventListener('click', () => {
-        console.log("Mounting SignUp...");
-        heroSection.style.display = 'none';
-        authView.style.display = 'block';
-        clerk.openSignUp({
-            afterSignUpUrl: window.location.origin
-        });
+        clerk.openSignUp();
     });
 
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        await clerk.signOut();
-        window.location.reload();
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+        clerk.signOut(() => window.location.reload());
     });
 
     document.getElementById('hero-cta')?.addEventListener('click', () => {
@@ -57,11 +51,6 @@ function setupAuthHandlers() {
         } else {
             clerk.openSignUp();
         }
-    });
-
-    document.getElementById('back-to-hero')?.addEventListener('click', () => {
-        authView.style.display = 'none';
-        heroSection.style.display = 'block';
     });
 
     // Scan Actions
@@ -73,7 +62,6 @@ function setupAuthHandlers() {
 
 function updateUIForLoggedInUser(user) {
     document.getElementById('hero-section').style.display = 'none';
-    document.getElementById('auth-view').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'block';
     document.getElementById('logged-out-nav').style.display = 'none';
     document.getElementById('logged-in-nav').style.display = 'block';
@@ -82,7 +70,6 @@ function updateUIForLoggedInUser(user) {
 
 function updateUIForLoggedOutUser() {
     document.getElementById('hero-section').style.display = 'block';
-    document.getElementById('auth-view').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'none';
     document.getElementById('logged-out-nav').style.display = 'block';
     document.getElementById('logged-in-nav').style.display = 'none';
@@ -90,7 +77,7 @@ function updateUIForLoggedOutUser() {
 
 async function fetchScansHistory() {
     try {
-        const token = await clerk.session.getToken();
+        const token = await window.Clerk.session.getToken();
         const response = await fetch(`${API_URL}/api/v1/scans/history`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -146,7 +133,7 @@ async function runNewScan() {
     btn.textContent = 'Scanning...';
 
     try {
-        const token = await clerk.session.getToken();
+        const token = await window.Clerk.session.getToken();
         const response = await fetch(`${API_URL}/api/v1/scans/manifest`, {
             method: 'POST',
             headers: {
@@ -157,7 +144,6 @@ async function runNewScan() {
         });
 
         if (response.ok) {
-            const data = await response.json();
             document.getElementById('manifest-content').value = '';
             fetchScansHistory();
             alert('Scan job submitted successfully!');
@@ -180,7 +166,7 @@ async function viewDetails(id) {
     content.innerHTML = '<p>Loading details...</p>';
 
     try {
-        const token = await clerk.session.getToken();
+        const token = await window.Clerk.session.getToken();
         const response = await fetch(`${API_URL}/api/v1/scans/${id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -195,43 +181,25 @@ function renderResults(scan) {
     const content = document.getElementById('results-content');
     
     if (scan.status !== 'COMPLETED') {
-        content.innerHTML = `
-            <div class="status-msg">
-                <h3>Status: ${scan.status}</h3>
-                <p>This scan is still being processed or has failed. Please refresh in a moment.</p>
-            </div>
-        `;
+        content.innerHTML = `<div><h3>Status: ${scan.status}</h3><p>Still processing...</p></div>`;
         return;
     }
 
-    let html = `
-        <div class="results-summary">
-            <h3>Overall Risk Score: <span class="risk-score ${getScoreClass(scan.riskScore)}">${scan.riskScore}</span></h3>
-            <p>Analyzed at: ${new Date(scan.createdAt).toLocaleString()}</p>
-        </div>
-        <hr style="margin: 1rem 0; border: 0; border-top: 1px solid var(--border);">
-        <h3>Detected Issues by Library:</h3>
-    `;
-
+    let html = `<h3>Risk Score: ${scan.riskScore}</h3><hr>`;
     scan.results.forEach(res => {
         html += `
             <div class="library-result">
                 <h4>${res.libraryName} @ ${res.libraryVersion}</h4>
-                ${res.vulnerabilities.map(v => `
-                    <div class="vuln-item">
-                        <strong>${v.externalId} - ${v.title || 'No title'}</strong>
-                        <p>${v.description || 'No description available.'}</p>
-                        <span class="badge">${v.severity || 'UNKNOWN'}</span>
-                    </div>
-                `).join('')}
-                ${res.vulnerabilities.length === 0 ? '<p style="color: var(--success)">✓ No vulnerabilities detected</p>' : ''}
+                ${res.vulnerabilities.map(v => `<div class="vuln-item"><strong>${v.externalId}</strong>: ${v.title}</div>`).join('')}
             </div>
         `;
     });
-
     content.innerHTML = html;
 }
 
 function scrollToDashboard() {
     document.getElementById('dashboard-section').scrollIntoView({ behavior: 'smooth' });
 }
+
+// Inicialização automática
+window.initClerk = initClerk;
