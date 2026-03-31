@@ -13,8 +13,12 @@ window.addEventListener('load', async function () {
     }
 
     // Auth Buttons
-    document.getElementById('login-btn')?.addEventListener('click', () => clerk.openSignIn());
-    document.getElementById('register-btn')?.addEventListener('click', () => clerk.openSignUp());
+    document.getElementById('login-btn')?.addEventListener('click', () => clerk.openSignIn({
+        afterSignInUrl: window.location.href
+    }));
+    document.getElementById('register-btn')?.addEventListener('click', () => clerk.openSignUp({
+        afterSignUpUrl: window.location.href
+    }));
     document.getElementById('hero-cta')?.addEventListener('click', () => {
         if (clerk.user) {
             scrollToDashboard();
