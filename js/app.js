@@ -12,21 +12,44 @@ window.addEventListener('load', async function () {
         updateUIForLoggedOutUser();
     }
 
-    // Auth Buttons
-    document.getElementById('login-btn')?.addEventListener('click', () => clerk.openSignIn({
-        afterSignInUrl: window.location.href
-    }));
-    document.getElementById('register-btn')?.addEventListener('click', () => clerk.openSignUp({
-        afterSignUpUrl: window.location.href
-    }));
+    // Auth Form Logic (Embedded)
+    const mountPoint = document.getElementById('clerk-mount-point');
+    const authView = document.getElementById('auth-view');
+    const heroSection = document.getElementById('hero-section');
+
+    document.getElementById('login-btn')?.addEventListener('click', () => {
+        heroSection.style.display = 'none';
+        authView.style.display = 'block';
+        clerk.mountSignIn(mountPoint, {
+            afterSignInUrl: window.location.origin
+        });
+    });
+
+    document.getElementById('register-btn')?.addEventListener('click', () => {
+        heroSection.style.display = 'none';
+        authView.style.display = 'block';
+        clerk.mountSignUp(mountPoint, {
+            afterSignUpUrl: window.location.origin
+        });
+    });
+
     document.getElementById('hero-cta')?.addEventListener('click', () => {
         if (clerk.user) {
             scrollToDashboard();
         } else {
-            clerk.openSignUp();
+            document.getElementById('register-btn').click();
         }
     });
-    document.getElementById('logout-btn')?.addEventListener('click', () => clerk.signOut());
+
+    document.getElementById('back-to-hero')?.addEventListener('click', () => {
+        authView.style.display = 'none';
+        heroSection.style.display = 'block';
+    });
+
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        await clerk.signOut();
+        window.location.reload();
+    });
 
     // Scan Actions
     document.getElementById('run-scan-btn')?.addEventListener('click', runNewScan);
@@ -37,6 +60,7 @@ window.addEventListener('load', async function () {
 
 function updateUIForLoggedInUser(user) {
     document.getElementById('hero-section').style.display = 'none';
+    document.getElementById('auth-view').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'block';
     document.getElementById('logged-out-nav').style.display = 'none';
     document.getElementById('logged-in-nav').style.display = 'block';
@@ -45,6 +69,7 @@ function updateUIForLoggedInUser(user) {
 
 function updateUIForLoggedOutUser() {
     document.getElementById('hero-section').style.display = 'block';
+    document.getElementById('auth-view').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'none';
     document.getElementById('logged-out-nav').style.display = 'block';
     document.getElementById('logged-in-nav').style.display = 'none';
